@@ -64,7 +64,7 @@ function CharacterEditModal({ isOpen, onClose, character, characterId, onSave, i
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">System Prompt</label>
+            <label className="block text-sm font-medium mb-1">Character Description</label>
             <textarea 
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}

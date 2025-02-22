@@ -135,6 +135,11 @@ async function handleSingleAgentResponse(
             })
             .slice(-6);
 
+        const systemPrompt = `
+            You are ${agentDetails.agentName}. You are designed the answer the user's question in a way that is to the point and informative. Your character description is ${agentDetails.systemPrompt}.
+            You always answer the with markdown formatting.
+        `;
+
         await getChatResponse(
             [
                 ...previousMessages,
@@ -144,7 +149,7 @@ async function handleSingleAgentResponse(
                 },
                 {
                     role: "system",
-                    content: agentDetails.systemPrompt + " Generate a markdown response. put code blocks in ```code``` tags."
+                    content: systemPrompt
                 }
             ],
             agentDetails.model,
@@ -231,6 +236,11 @@ async function handleAgentDebate(
             content: recentMessage
         });
 
+        const currentDebateMessages: {
+            characterName: string,
+            content: string
+        }[] = []
+
         const rounds = 2;
         for (let round = 0; round < rounds; round++) {
             for (const agent of requestedAgentDetails) {
@@ -244,19 +254,32 @@ async function handleAgentDebate(
                     content: ""
                 };
 
+                const systemPrompt = `
+                    You are the character ${agent.agentName}. You are designed to answer the question that the user asked which is ${recentMessage}.
+                    your character description is ${agent.systemPrompt}. Act as described by your character description.
+                    You always answer the with markdown formatting.
+                `;
+
+                const userPrompt = `
+                    Previous Conversation: ${JSON.stringify(previousMessages)}
+                    Current debate messages: ${JSON.stringify(currentDebateMessages)}
+
+                    Please respond to the debate. Bring up new points or counter the other characters's points. If you repeat existing points make sure to add new information to the point.
+                    the aim of the debate is to answer the question that the user asked which is <debate-aim>${recentMessage}</debate-aim>
+                    Structure your response in a formal debate format.
+                `;
+
                 let currentResponse = "";
 
                 await getChatResponse(
                     [
-                        ...previousMessages.map((message) => ({
-                            role: message.agentName ? (
-                                message.agentName === agent.agentName ? "assistant" : "user"
-                            ) : message.role,
-                            content: message.content
-                        })),
+                        {
+                            role: "user",
+                            content: userPrompt
+                        },
                         {
                             role: "system",
-                            content: agent.systemPrompt + " Generate a response in markdown format."
+                            content: systemPrompt
                         }
                     ],
                     agent.model,
@@ -274,19 +297,18 @@ async function handleAgentDebate(
                     }
                 );
 
-                previousMessages.push({
-                    role: "assistant",
-                    agentName: agent.agentName,
+                currentDebateMessages.push({
+                    characterName: agent.agentName,
                     content: currentResponse
                 });
             }
         }
 
         const replyerSystemPrompt = `
-            You will be given a list of messages from the debate.
-            Please be concise and to the point. If there are any details that are important such as steps or instructions.
-            You should be a helpful assistant that replies to the user's message using the information from the debate.
+            You will be given a list of previous messages from the current conversation as well as messages from a debate between the agents.
+            Please be concise and to the point. If there are any details that are important such as steps or instructions make sure to include them.
             Use the information from the debate to answer the question that the user asked which is ${recentMessage}
+            You always answer the with markdown formatting.
         `;
 
         await getChatResponse(
