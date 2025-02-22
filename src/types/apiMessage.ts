@@ -1,9 +1,10 @@
+import { CharacterId } from "@/store/characters";
 
 export type ApiMessageRequest = {
     message: string;
     conversationId: string;
     userAuthToken: string;
-    requestedAgentIds: string[];
+    requestedCharacterIds: CharacterId[];
 }
 
 export type ApiMessageResponse = {

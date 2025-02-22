@@ -64,7 +64,7 @@ onDelete: () => void;
           >
             <DropdownItem key="rename">Rename</DropdownItem>
             <DropdownItem key="delete" className="text-danger" color="danger">
-                Delete chain
+                Delete Chat
             </DropdownItem>
           </DropdownMenu>
         </Dropdown>

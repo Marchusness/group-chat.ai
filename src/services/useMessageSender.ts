@@ -2,6 +2,7 @@
 import { useCallback, useState } from "react";
 import { getUserAuthToken } from "./firebase/init";
 import { ApiMessageRequest } from "@/types/apiMessage";
+import { CharacterId } from "@/store/characters";
 
 export function useMessageSender(conversationId: string) {
   
@@ -10,10 +11,10 @@ export function useMessageSender(conversationId: string) {
 
     const sendMessage = useCallback(async ({
         text,
-        requestedAgentIds,
+        requestedCharacterIds,
     }: {
         text: string;
-        requestedAgentIds: string[];
+        requestedCharacterIds: CharacterId[];
     }) => {
         if (loading) {
             return;
@@ -35,7 +36,7 @@ export function useMessageSender(conversationId: string) {
                     message: text,
                     conversationId,
                     userAuthToken,
-                    requestedAgentIds,
+                    requestedCharacterIds,
                  } satisfies ApiMessageRequest),
             });
             const data = await response.json();

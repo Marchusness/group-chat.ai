@@ -1,3 +1,4 @@
+import { CharacterDetails } from "@/store/characters";
 
 export const UserCollectionId = "Users";
 
@@ -9,4 +10,5 @@ export type UserDoc = {
       conversationName: string;
     };
   };
+  characterDetails: Record<string, CharacterDetails>;
 };

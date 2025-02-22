@@ -4,8 +4,10 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { UserDoc, UserCollectionId } from "@/types/userDoc";
 import { ConversationsCollectionId, ConversationMessage, ConversationsDoc } from "@/types/conversationsDoc";
-import { AgentDebateDoc, AgentDebateCollectionId } from "@/types/agentDebateDoc";
+import { AgentDebateDoc, AgentDebateCollectionId, AgentMessage } from "@/types/agentDebateDoc";
 import { randomUUID } from "crypto";
+import { characterDetails, CharacterDetails, CharacterId } from "@/store/characters";
+import { getChatResponse } from "@/services/openai/getChatResponse";
 
 // Initialize Firebase Admin if not already initialized
 const app = initializeFirebaseAdmin();
@@ -20,8 +22,8 @@ async function getUserDoc(userId: string): Promise<UserDoc> {
     const userDoc = await userRef.get();
     
     if (!userDoc.exists) {
-        await userRef.set({ conversations: {} } as UserDoc);
-        return { conversations: {} };
+        await userRef.set({ conversations: {}, characterDetails: characterDetails } as UserDoc);
+        return { conversations: {}, characterDetails: characterDetails };
     }
     return userDoc.data() as UserDoc;
 }
@@ -35,7 +37,7 @@ async function getOrCreateConversation(userId: string, userDoc: UserDoc, convers
             [`conversations.${conversationId}`]: {
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
-                conversationName: `Conversation ${new Date().toLocaleDateString()}`
+                conversationName: `Created at ${new Date().toISOString()}`
             } satisfies UserDoc["conversations"][string]
         };
 
@@ -73,7 +75,8 @@ async function addMessageToConversation(
     userId: string, 
     conversationId: string, 
     message: string,
-    requestedAgents: string[]
+    requestedCharacters: CharacterId[],
+    userDoc: UserDoc
 ): Promise<ConversationMessage> {
     const conversationRef = db.collection(UserCollectionId)
         .doc(userId)
@@ -84,7 +87,10 @@ async function addMessageToConversation(
         type: "user",
         lastUpdated: Date.now(),
         content: message,
-        requestedAgents
+        requestedCharacters: requestedCharacters.map((characterId) => ({
+            characterId,
+            characterName: (userDoc.characterDetails ?? characterDetails)[characterId].agentName
+        }))
     };
 
     const messageId = randomUUID();
@@ -102,35 +108,58 @@ async function handleSingleAgentResponse(
     conversationId: string,
     conversationDoc: ConversationsDoc,
     recentMessage: string,
-    agentDetails: AgentDetails
+    agentDetails: CharacterDetails
 ) {
     try {
         const messageId = randomUUID();
         const agentMessage: ConversationMessage = {
             type: "single-agent",
             lastUpdated: Date.now(),
-            agentId: agentDetails.agentId,
+            agentId: agentDetails.agentId as CharacterId,
             agentName: agentDetails.agentName,
             content: ""
         };
 
-        // Simulate streaming response (replace with actual AI implementation)
-        const response = "This is a simulated response from the helpful assistant.";
-        for (const chunk of response.split(" ")) {            
-            // Update the message content
-            agentMessage.content += chunk + " ";
+        const conversationRef = db.collection(UserCollectionId)
+            .doc(userId)
+            .collection(ConversationsCollectionId)
+            .doc(conversationId);
+
+        const previousMessages = Object.values(conversationDoc.messages)
+            .sort((a, b) => a.lastUpdated - b.lastUpdated)
+            .map((message) => {
+                return {
+                    role: message.type === "user" ? "user" : "assistant" as "user" | "assistant",
+                    content: message.content
+                }
+            })
+            .slice(-6);
+
+        await getChatResponse(
+            [
+                ...previousMessages,
+                {
+                    role: "user",
+                    content: recentMessage
+                },
+                {
+                    role: "system",
+                    content: agentDetails.systemPrompt + " Generate a markdown response. put code blocks in ```code``` tags."
+                }
+            ],
+            agentDetails.model,
+            async (chunk) => {
+                agentMessage.content += chunk;
+                agentMessage.lastUpdated = Date.now();
             
-            // Update the conversation document
-            await db.collection(UserCollectionId)
-                .doc(userId)
-                .collection(ConversationsCollectionId)
-                .doc(conversationId)
-                .set({
-                    messages: {
-                        [messageId]: agentMessage
-                    }
-                }, { merge: true });
-        }
+                await conversationRef
+                    .set({
+                        messages: {
+                            [messageId]: agentMessage
+                        }
+                    }, { merge: true });
+            }
+        );
     } catch (error) {
         console.error('Error in stream processing:', error);
     }
@@ -140,8 +169,8 @@ async function handleAgentDebate(
     userId: string,
     conversationId: string,
     conversationDoc: ConversationsDoc,
-    message: string,
-    requestedAgentDetails: AgentDetails[]
+    recentMessage: string,
+    requestedAgentDetails: CharacterDetails[]
 ) {
     try {
         const agentDebateId = randomUUID();
@@ -154,124 +183,171 @@ async function handleAgentDebate(
         };
 
         // Create conversation message
-        const debateMessage: ConversationMessage = {
+        const conversationMessage: ConversationMessage = {
             type: "agent-debate",
             lastUpdated: Date.now(),
             agentDebateId,
             content: ""
         };
 
+        const conversationRef = db.collection(UserCollectionId)
+            .doc(userId)
+            .collection(ConversationsCollectionId)
+            .doc(conversationId);
+
+        const agentDebateRef = conversationRef
+            .collection(AgentDebateCollectionId)
+            .doc(agentDebateId);
+
         // Initialize both documents
         await Promise.all([
-            db.collection(UserCollectionId)
-                .doc(userId)
-                .collection(ConversationsCollectionId)
-                .doc(conversationId)
-                .collection(AgentDebateCollectionId)
-                .doc(agentDebateId)
+            agentDebateRef
                 .set(agentDebateDoc),
 
-            db.collection(UserCollectionId)
-                .doc(userId)
-                .collection(ConversationsCollectionId)
-                .doc(conversationId)
+            conversationRef
                 .set({
                     messages: {
-                        [messageId]: debateMessage
+                        [messageId]: conversationMessage
                     }
                 }, { merge: true })
         ]);
 
-        // Simulate debate (replace with actual implementation)
-        let debateContent = "";
+        const previousMessages: {
+            role: "user" | "assistant",
+            agentName?: string,
+            content: string
+        }[] = Object.values(conversationDoc.messages)
+            .sort((a, b) => a.lastUpdated - b.lastUpdated)
+            .map((message) => {
+                return {
+                    role: message.type === "user" ? "user" : "assistant" as "user" | "assistant",
+                    content: message.content
+                }
+            })
+            .slice(-6);
+
+        previousMessages.push({
+            role: "user",
+            content: recentMessage
+        });
+
         const rounds = 2;
         for (let round = 0; round < rounds; round++) {
             for (const agent of requestedAgentDetails) {
-                const agentMessage = `${agent.agentName}'s response for round ${round + 1}. `;
-                debateContent += agentMessage;
-                
-                // Update debate message
-                debateMessage.content = debateContent;
-                // Update debate message
-                debateMessage.content = debateContent;
-                await db.collection(UserCollectionId)
-                    .doc(userId)
-                    .collection(ConversationsCollectionId)
-                    .doc(conversationId)
-                    .set({
-                        messages: {
-                            [messageId]: debateMessage
+                const debateMessageId = randomUUID();
+                const debateMessage: AgentMessage = {
+                    createdAt: Date.now(),
+                    lastUpdated: Date.now(),
+                    order: round,
+                    agentId: agent.agentId,
+                    agentName: agent.agentName,
+                    content: ""
+                };
+
+                let currentResponse = "";
+
+                await getChatResponse(
+                    [
+                        ...previousMessages.map((message) => ({
+                            role: message.agentName ? (
+                                message.agentName === agent.agentName ? "assistant" : "user"
+                            ) : message.role,
+                            content: message.content
+                        })),
+                        {
+                            role: "system",
+                            content: agent.systemPrompt + " Generate a response in markdown format."
                         }
-                    }, { merge: true });
+                    ],
+                    agent.model,
+                    async (chunk) => {
+                        currentResponse += chunk;
+                        debateMessage.content += chunk;
+                        debateMessage.lastUpdated = Date.now();
+                    
+                        await agentDebateRef
+                            .set({
+                                messages: {
+                                    [debateMessageId]: debateMessage
+                                }
+                            }, { merge: true });
+                    }
+                );
+
+                previousMessages.push({
+                    role: "assistant",
+                    agentName: agent.agentName,
+                    content: currentResponse
+                });
             }
         }
 
-        // Add summary
-        const summary = "\n\nDebate Summary: This is a simulated summary of the debate.";
-        debateMessage.content += summary;
+        const replyerSystemPrompt = `
+            You will be given a list of messages from the debate.
+            Please be concise and to the point. If there are any details that are important such as steps or instructions.
+            You should be a helpful assistant that replies to the user's message using the information from the debate.
+            Use the information from the debate to answer the question that the user asked which is ${recentMessage}
+        `;
 
-        // Update final state
-        await Promise.all([
-            db.collection(UserCollectionId)
-                .doc(userId)
-                .collection(ConversationsCollectionId)
-                .doc(conversationId)
-                .collection(AgentDebateCollectionId)
-                .doc(agentDebateId)
-                .update({ state: "completed" }),
-
-            db.collection(UserCollectionId)
-                .doc(userId)
-                .collection(ConversationsCollectionId)
-                .doc(conversationId)
+        await getChatResponse(
+            [
+                ...previousMessages.filter((message) => !message.agentName).map((message) => ({
+                    role: message.role,
+                    content: message.content
+                })),
+                {
+                    role: "user",
+                    content: `Debate between the agents: ${JSON.stringify(previousMessages.filter((message) => message.agentName))}`
+                },
+                {
+                    role: "system",
+                    content: replyerSystemPrompt
+                },
+            ],
+            "gpt-4o-mini",
+            async (chunk) => {
+                conversationMessage.content += chunk;
+                conversationMessage.lastUpdated = Date.now();
+            
+                await conversationRef
                 .set({
                     messages: {
-                        [messageId]: debateMessage
+                        [messageId]: conversationMessage
                     }
                 }, { merge: true })
-        ]);
+            }
+        );
+
+        // Update final state
+        await agentDebateRef.update({ state: "completed" })
 
     } catch (error) {
         console.error('Error in debate processing:', error);
     } 
 }
 
-type AgentDetails = {
-    agentId: string;
-    agentName: string;
-    systemPrompt: string;
-    model: string;
-}
-
-const defaultAgentDetails: AgentDetails = {
-    agentId: "default-assistant",
+const defaultAgentDetails: CharacterDetails = {
+    agentId: "Helpful Assistant",
     agentName: "Helpful Assistant",
     systemPrompt: "You are a helpful assistant.",
     model: "gpt-4o-mini"
 }
 
-async function getAgentDetails(agentIds: string[]): Promise<AgentDetails[]> {
+async function getAgentDetails(agentIds: string[], userDoc: UserDoc): Promise<CharacterDetails[]> {
     if (agentIds.length === 0) {
-        agentIds = ["default-assistant"];
+        agentIds = ["Helpful Assistant"];
     }
 
     return agentIds.map((agentId) => {
-        switch (agentId) {
-            case "default-assistant":
-                return defaultAgentDetails;
-            default:
-                return {
-                    agentId: agentId,
-                    agentName: "Unknown Agent",
-                    systemPrompt: "You are a helpful assistant.",
-                    model: "gpt-4o-mini"
-                };
+        if ((userDoc.characterDetails ?? characterDetails)[agentId]) {
+            return (userDoc.characterDetails ?? characterDetails)[agentId]
         }
+        return defaultAgentDetails;
     });
 }
 
 export async function POST(req: Request) {
-    const { message, conversationId, userAuthToken, requestedAgentIds } = await req.json() as ApiMessageRequest;
+    const { message, conversationId, userAuthToken, requestedCharacterIds } = await req.json() as ApiMessageRequest;
     
     try {
         // Verify the user's auth token
@@ -289,9 +365,9 @@ export async function POST(req: Request) {
         const conversationDoc = await getOrCreateConversation(userId, userDoc, conversationId);
 
         // Add user message to conversation
-        await addMessageToConversation(userId, conversationId, message, requestedAgentIds || []);
+        await addMessageToConversation(userId, conversationId, message, requestedCharacterIds || [], userDoc);
 
-        const agentDetails = await getAgentDetails(requestedAgentIds);
+        const agentDetails = await getAgentDetails(requestedCharacterIds, userDoc);
 
         if (agentDetails.length <= 1) {
             await handleSingleAgentResponse(userId, conversationId, conversationDoc, message, agentDetails.at(0) ?? defaultAgentDetails);

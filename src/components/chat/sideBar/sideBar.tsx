@@ -5,14 +5,16 @@ import { useState } from "react";
 import { ShowHideArrow } from "./showHideArrow";
 import { NewConversationButton } from "./newChatButton";
 import { ConversationSelectorList } from "./conversationSelector";
-import { useUserDocData } from "@/services/firebase/firestore";
-import { useAuthUser } from "@/services/firebase/init";
+import { CharacterSelectorList } from "./characterSelector";
+import { UserDoc } from "@/types/userDoc";
 
-export function SideBar(): React.JSX.Element {
-  const user = useAuthUser();
-  const userDoc = useUserDocData(user?.uid);
+export function SideBar({
+  userDoc,
+}: {
+  userDoc: UserDoc | null
+}): React.JSX.Element {
 
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   return <div className="absolute h-screen"
     onMouseEnter={() => setIsOpen(true)}
@@ -23,7 +25,7 @@ export function SideBar(): React.JSX.Element {
       className="h-full max-w-full bg-neutral-900 overflow-hidden"
       initial={false}
       animate={isOpen ? {
-        width: 360,
+        width: 300,
         maxWidth: "100vw",
         translateX: 0,
       } : {
@@ -36,10 +38,11 @@ export function SideBar(): React.JSX.Element {
       }}
     >
       <nav
-        className="flex h-full flex-col px-3 pb-3.5 w-[360px] text-neutral-300"
+        className="flex h-full flex-col px-3 pb-3.5 w-[300px] text-neutral-300"
       >
         <div className="flex flex-col flex-1 -mr-3 pr-3 overflow-y-auto">
           <NewConversationButton />
+          <CharacterSelectorList userDoc={userDoc} />
           <ConversationSelectorList userDoc={userDoc} />
         </div>
       </nav>

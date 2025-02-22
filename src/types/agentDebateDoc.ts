@@ -1,8 +1,9 @@
 
 export const AgentDebateCollectionId = "AgentDebate";
 
-type AgentMessage = {
-    createdAt: Date;
+export type AgentMessage = {
+    createdAt: number;
+    lastUpdated: number;
     order: number;
     agentId: string;
     agentName: string;

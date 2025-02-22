@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 import { firestore } from "./init";
 import { AgentDebateCollectionId, AgentDebateDoc } from "@/types/agentDebateDoc";
-import { doc, onSnapshot } from "@firebase/firestore";
+import { doc, onSnapshot, setDoc, updateDoc } from "@firebase/firestore";
 import { ConversationsCollectionId, ConversationsDoc } from "@/types/conversationsDoc";
 import { UserCollectionId, UserDoc } from "@/types/userDoc";
+import { characterDetails } from "@/store/characters";
+
+
+export function updateUserDoc(userId: string, data: object) {
+  const docRef = doc(firestore, `${UserCollectionId}/${userId}`);
+  return updateDoc(docRef, data);
+}
+
+function createDoc(path: string, data: object) {
+  const docRef = doc(firestore, path);
+  return setDoc(docRef, data);
+}
 
 export function useDoc<T>(path: string): T | null {
   const [docData, setDocData] = useState<T | null>(null);
@@ -24,10 +36,22 @@ export function useDoc<T>(path: string): T | null {
   return docData;
 }
 
+const defaultUserDoc: UserDoc = {
+  conversations: {},
+  characterDetails: characterDetails,
+}
 
 export function useUserDocData(userId: string | undefined): UserDoc | null {
   const path = `${UserCollectionId}/${userId}`;
-  return useDoc<UserDoc>(path);
+  const userDoc = useDoc<UserDoc>(path);
+
+  useEffect(() => {
+    if (!userDoc) {
+      createDoc(path, defaultUserDoc);
+    }
+  }, [userDoc, path]);
+
+  return userDoc;
 }
 
 

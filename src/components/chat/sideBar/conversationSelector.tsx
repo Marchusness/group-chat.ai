@@ -16,6 +16,7 @@ export function ConversationSelectorList({
   const currentConversationId = useConversationStore((state) => state.currentConversationId);
   const openConversation = useConversationStore((state) => state.openConversation);
   return <ol className="pb-2 text-sm mt-3 flex-grow flex flex-col gap-1">
+    <h2 className="px-3 mb-2 text-lg font-bold text-neutral-400">Chat History</h2>
     {!isClient ? <>
       <li
         className="z-10"
