@@ -12,6 +12,7 @@
     "@heroicons/react": "^2.2.0",
     "@heroui/react": "^2.7.2",
     "firebase": "^11.3.1",
+    "firebase-admin": "^13.1.0",
     "framer-motion": "^12.4.7",
     "immer": "^10.1.1",
     "next": "15.1.7",

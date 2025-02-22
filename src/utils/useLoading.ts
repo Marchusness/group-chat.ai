@@ -6,7 +6,7 @@ export function useLoadingHandler<T>(handler: (props: T) => Promise<void>): {
 } {
   const [ loading, setLoading ] = useState<boolean>(false);
 
-  async function  wrappedHandler(props: T): Promise<void> {
+  async function wrappedHandler(props: T): Promise<void> {
     if (loading) {
       return;
     }

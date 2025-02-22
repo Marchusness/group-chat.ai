@@ -2,9 +2,11 @@
 export type ApiMessageRequest = {
     message: string;
     conversationId: string;
+    userAuthToken: string;
+    requestedAgentIds: string[];
 }
 
 export type ApiMessageResponse = {
-    message: string;
+    success: boolean;
     conversationId: string;
 }
