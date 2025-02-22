@@ -1,5 +1,5 @@
 
-export const AgentDebateCollection = "AgentDebate";
+export const AgentDebateCollectionId = "AgentDebate";
 
 type AgentMessage = {
     createdAt: Date;

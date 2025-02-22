@@ -1,14 +1,28 @@
 
-export const ConversationsCollection = "Conversations";
+export const ConversationsCollectionId = "Conversations";
 
-type AgentMessage = {
-  createdAt: Date;
-  order: number;
+
+
+export type ConversationMessage = {
+  type: "agent-debate";
+  lastUpdated: number;
+  agentDebateId: string;
+  content: string;
+} | {
+  type: "user";
+  lastUpdated: number;
+  content: string;
+  requestedAgents: string[];
+} | {
+  type: "single-agent";
+  lastUpdated: number;
   agentId: string;
   agentName: string;
   content: string;
 };
 
 export type ConversationsDoc = {
-  messages: Record<string, AgentMessage>;
+  messages: {
+    [messageId: string]: ConversationMessage;
+  };
 };
