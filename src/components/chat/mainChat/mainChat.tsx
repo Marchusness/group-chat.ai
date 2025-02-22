@@ -1,6 +1,12 @@
 import { AgentConversation } from "./agentConversation/agentConversation";
+import { useConversationStore } from "@/store/conversationStore";
 
 export function MainChat() {
+  const { currentConversationId, agentDebateId } = useConversationStore((state) => ({
+    currentConversationId: state.currentConversationId,
+    agentDebateId: state.agentDebateId,
+  }));
+
   return (
     <div className="flex flex-row">
       <div className="flex flex-col">
@@ -13,8 +19,9 @@ export function MainChat() {
         </div>
       </div>
 
-      <AgentConversation />
-
+      {currentConversationId && agentDebateId && (
+        <AgentConversation conversationId={currentConversationId} agentDebateId={agentDebateId} />
+      )}
 
     </div>
   );
