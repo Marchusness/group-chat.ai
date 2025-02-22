@@ -1,8 +1,12 @@
 
-export const UserCollection = "Users";
+export const UserCollectionId = "Users";
 
 export type UserDoc = {
-  id: string;
-  createdAt: Date;
-  updatedAt: Date;
+  conversations: {
+    [conversationId: string]: {
+      createdAt: number;
+      updatedAt: number;
+      conversationName: string;
+    };
+  };
 };

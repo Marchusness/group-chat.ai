@@ -2,7 +2,7 @@
 
 import { AgentConversation } from "./agentConversation/agentConversation";
 import { useConversationStore } from "@/store/conversationStore";
-
+import { ActiveChatView } from "./chatView";
 export function MainChat() {
   // const { currentConversationId, agentDebateId } = useConversationStore()
   const currentConversationId = "test-conversation-123";
@@ -11,9 +11,7 @@ export function MainChat() {
   return (
     <div className="flex flex-row justify-between w-full">
       <div className="flex flex-col">
-        <div>
-          <h1>This is the chat history</h1>
-        </div>
+        <ActiveChatView conversationId={currentConversationId} />
 
         <div>
           <h1>This is the chat input</h1>
