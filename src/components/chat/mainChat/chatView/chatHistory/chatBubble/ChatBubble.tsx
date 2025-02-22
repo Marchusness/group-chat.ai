@@ -17,7 +17,7 @@ export function ChatBubble({
         </div>
         :
         <Markdown 
-          className="bg-neutral-700 p-3 w-full rounded-r-xl rounded-tl-xl mr-auto markdown"
+          // className="bg-neutral-700 p-3 w-full rounded-r-xl rounded-tl-xl mr-auto markdown"
           remarkPlugins={[remarkGfm]}
           components={{
             code(props) {

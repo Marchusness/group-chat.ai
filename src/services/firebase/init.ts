@@ -33,4 +33,8 @@ export function useAuthUser() {
   return user;
 }
 
+export async function getUserAuthToken() {
+  return await auth.currentUser?.getIdToken();
+}
+
 export { auth, firestore };

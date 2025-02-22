@@ -11,7 +11,13 @@ export function ChatViewTextArea({
 }: {
   placeholder: string;
   loading: boolean;
-  onSend: (text: string) => Promise<void>;
+  onSend: ({
+    text,
+    requestedAgentIds,
+  }: {
+    text: string;
+    requestedAgentIds: string[];
+  }) => Promise<void>;
 }): React.JSX.Element {
   
   const [ input, setInput ] = useState<string>("");
@@ -20,7 +26,7 @@ export function ChatViewTextArea({
     wrappedHandler: _sendQuestion,
   } = useLoadingHandler(onSend);
 
-  function sendQuestion(text: string): void {
+  function sendQuestion(text: string, requestedAgentIds: string[]): void {
     if (loading) {
       return;
     }
@@ -28,7 +34,7 @@ export function ChatViewTextArea({
       return;
     }
     setInput("");
-    _sendQuestion(text);
+    _sendQuestion({ text, requestedAgentIds });
   }
 
   return <div className="bg-zinc-700 rounded-xl flex items-end border-[1px] border-neutral-500 flex-shrink-0 mx-2 mb-2">
@@ -45,7 +51,7 @@ export function ChatViewTextArea({
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && !e.shiftKey) {// enter key to submit form 
-          sendQuestion(input);
+          sendQuestion(input, []);
         }
       }}
     />
@@ -53,7 +59,7 @@ export function ChatViewTextArea({
       loading={loading}
       disabled={loading || input === ""}
       onclick={function (): void {
-        sendQuestion(input);
+        sendQuestion(input, []);
       } } />
   </div>;
 }
