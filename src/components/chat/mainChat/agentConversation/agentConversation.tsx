@@ -52,14 +52,17 @@ export function AgentConversation({
   };
 
   return (
-    <div className="bg-[rgb(61,61,58)] rounded-xl shadow-lg h-[calc(100vh-2rem)] w-[calc(100%-2rem)] m-4 ml-auto">
-      <div className="px-4 py-4">
-        <h2 className="font-semibold text-white">Multi-Agent Conversation</h2>
+    <div className="min-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] m-4 ml-auto bg-[rgb(61,61,58)] rounded-xl shadow-lg">
+      <div className="p-4">
+        <h2 className="text-white font-semibold">Multi-Agent Conversation</h2>
       </div>
-      <div className="space-y-4 px-4 py-4 flex flex-col overflow-y-auto h-[calc(100%-4rem)]">
+      <div className="flex flex-col space-y-4 p-4 overflow-y-auto h-[calc(100%-4rem)]">
         {Object.values(agentDebate?.messages || {}).sort((a, b) => a.order - b.order).map((message) => (
-          <div key={message.order} className="block rounded-lg bg-[rgb(41,41,38)] p-3 w-[calc(100%-1rem)] shadow-md">
-            <div className="font-semibold text-white">{message.agentName}</div>
+          <div 
+            key={message.order} 
+            className="w-[calc(100%-1rem)] bg-[rgb(41,41,38)] rounded-lg p-3 shadow-md"
+          >
+            <div className="text-white font-semibold">{message.agentName}</div>
             <div className="mt-1 text-gray-300 whitespace-pre-wrap break-words">{message.content}</div>
           </div>
         ))}
