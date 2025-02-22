@@ -9,13 +9,9 @@ export function MainChat() {
   const agentDebateId = "test-debate-456";
 
   return (
-    <div className="flex flex-row justify-between w-full">
-      <div className="flex flex-col">
+    <div className="flex flex-row justify-between w-full h-full">
+      <div className="flex flex-col flex-1 items-center justify-center ml-32 -mt-16">
         <ActiveChatView conversationId={currentConversationId} />
-
-        <div>
-          <h1>This is the chat input</h1>
-        </div>
       </div>
 
       {currentConversationId && agentDebateId && (

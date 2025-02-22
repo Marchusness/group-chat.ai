@@ -32,7 +32,7 @@ export function ChatViewTextArea({
   }
 
   return <div className="bg-zinc-700 rounded-xl flex items-end border-[1px] border-neutral-500 flex-shrink-0 mx-2 mb-2">
-    <TextareaAutosize className='bg-transparent rounded-lg resize-none w-full min-h-full p-3 text-base'
+    <TextareaAutosize className='bg-transparent rounded-lg resize-none w-[600px] min-h-full p-3 text-base'
       minRows={1}
       maxRows={5}
       placeholder={placeholder}

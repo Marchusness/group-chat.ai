@@ -14,7 +14,7 @@ export function SideBar(): React.JSX.Element {
 
   const [isOpen, setIsOpen] = useState(true);
 
-  return <div className="relative h-screen"
+  return <div className="absolute h-screen"
     onMouseEnter={() => setIsOpen(true)}
     onMouseLeave={() => setIsOpen(false)}
   >
